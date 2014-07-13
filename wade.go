@@ -102,6 +102,7 @@ func (wd *Wade) init() {
 // Start starts the real operation, meant to be called at the end of everything.
 func (wd *Wade) Start() {
 	gJQ(js.Global.Get("document")).Ready(func() {
+		wd.tm.prepare()
 		wd.pm.getReady()
 	})
 }
