@@ -13,6 +13,7 @@ type TodoEntry struct {
 	Text  string
 	Done  bool
 	State string
+	pView *TodoView // pointer to parent view
 }
 
 type todoEntryTag struct {
@@ -31,6 +32,18 @@ func (t *TodoEntry) ToggleEdit() {
 // Destroy removes the entry from the list
 func (t *TodoEntry) Destroy() {
 	println("clicked Destroy:" + t.Text)
+
+	var i int
+	var entry *TodoEntry
+	for i, entry = range t.pView.Entries {
+		if entry.Text == t.Text {
+			println("Deleting: " + entry.Text)
+			break
+		}
+	}
+
+	t.pView.DeleteByIndex(i)
+
 }
 
 // ToggleDone switches the Done field on or off
@@ -70,6 +83,12 @@ func (t *TodoView) AddEntry() {
 	}
 }
 
+func (t *TodoView) DeleteByIndex(i int) {
+	copy(t.Entries[i:], t.Entries[i+1:])
+	t.Entries[len(t.Entries)-1] = nil
+	t.Entries = t.Entries[:len(t.Entries)-1]
+}
+
 func main() {
 	wadeApp := wd.WadeUp("pg-main", "/todo", func(wade *wd.Wade) {
 		wade.Pager().RegisterPages("wpage-root")
@@ -83,13 +102,13 @@ func main() {
 			view := new(TodoView)
 
 			view.Entries = []*TodoEntry{
-				&TodoEntry{Text: "create a datastore for entries", Done: true},
-				&TodoEntry{Text: "add new entries"},
-				&TodoEntry{Text: "toggle edit off - click anywhere else"},
-				&TodoEntry{Text: "ToggleAll should do something", Done: true},
-				&TodoEntry{Text: "destroy -> delete from the list"},
-				&TodoEntry{Text: "add filters for state"},
-				&TodoEntry{Text: "update counters in footer"},
+				&TodoEntry{pView: view, Text: "create a datastore for entries", Done: true},
+				&TodoEntry{pView: view, Text: "add new entries"},
+				&TodoEntry{pView: view, Text: "toggle edit off - click anywhere else"},
+				&TodoEntry{pView: view, Text: "ToggleAll should do something", Done: true},
+				&TodoEntry{pView: view, Text: "destroy -> delete from the list"},
+				&TodoEntry{pView: view, Text: "add filters for state"},
+				&TodoEntry{pView: view, Text: "update counters in footer"},
 			}
 
 			// update the t.State
