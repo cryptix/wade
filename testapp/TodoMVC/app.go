@@ -31,6 +31,18 @@ func (t *TodoEntry) ToggleEdit() {
 // Destroy removes the entry from the list
 func (t *TodoEntry) Destroy() {
 	println("clicked Destroy:" + t.Text)
+
+	var i int
+	var entry *TodoEntry
+	for i, entry = range uglyGlobalView.Entries {
+		if entry.Text == t.Text {
+			println("Deleting: " + entry.Text)
+			break
+		}
+	}
+
+	uglyGlobalView.DeleteByIndex(i)
+
 }
 
 // ToggleDone switches the Done field on or off
@@ -70,6 +82,14 @@ func (t *TodoView) AddEntry() {
 	}
 }
 
+func (t *TodoView) DeleteByIndex(i int) {
+	copy(t.Entries[i:], t.Entries[i+1:])
+	t.Entries[len(t.Entries)-1] = nil
+	t.Entries = t.Entries[:len(t.Entries)-1]
+}
+
+var uglyGlobalView *TodoView
+
 func main() {
 	wadeApp := wd.WadeUp("pg-main", "/todo", func(wade *wd.Wade) {
 		wade.Pager().RegisterPages("wpage-root")
@@ -80,9 +100,9 @@ func main() {
 		// our main controller
 		wade.Pager().RegisterController("pg-main", func(p *wd.PageData) interface{} {
 			println("called RegisterController for pg-main")
-			view := new(TodoView)
+			uglyGlobalView = new(TodoView)
 
-			view.Entries = []*TodoEntry{
+			uglyGlobalView.Entries = []*TodoEntry{
 				&TodoEntry{Text: "create a datastore for entries", Done: true},
 				&TodoEntry{Text: "add new entries"},
 				&TodoEntry{Text: "toggle edit off - click anywhere else"},
@@ -94,10 +114,10 @@ func main() {
 
 			// update the t.State
 			// might be better to bind to Done directly
-			for _, e := range view.Entries {
+			for _, e := range uglyGlobalView.Entries {
 				e.setCompleteState()
 			}
-			return view
+			return uglyGlobalView
 		})
 	})
 
