@@ -8,11 +8,17 @@ const (
 	stateCompleted = "completed"
 )
 
+type TodoEvent struct {
+	Kind    string
+	Subject interface{}
+}
+
 // TodoEntry represents a single entry in the todo list
 type TodoEntry struct {
-	Text  string
-	Done  bool
-	State string
+	Text   string
+	Done   bool
+	State  string
+	evChan chan<- TodoEvent
 }
 
 type todoEntryTag struct {
@@ -52,6 +58,7 @@ func (t *TodoEntry) setCompleteState() {
 type TodoView struct {
 	NewEntry string
 	Entries  []*TodoEntry
+	evChan   <-chan TodoEvent
 }
 
 //
@@ -70,6 +77,13 @@ func (t *TodoView) AddEntry() {
 	}
 }
 
+func (t *TodoView) eventHandler() {
+	for e := range t.evChan {
+		println("eventHandler got:" + e.Kind)
+	}
+	println("eventHandler left chan loop..!")
+}
+
 func main() {
 	wadeApp := wd.WadeUp("pg-main", "/todo", func(wade *wd.Wade) {
 		wade.Pager().RegisterPages("wpage-root")
@@ -81,15 +95,19 @@ func main() {
 		wade.Pager().RegisterController("pg-main", func(p *wd.PageData) interface{} {
 			println("called RegisterController for pg-main")
 			view := new(TodoView)
+			evChan := make(chan TodoEvent)
+			view.evChan = evChan
+
+			go view.eventHandler() //gopherjs:blocking
 
 			view.Entries = []*TodoEntry{
-				&TodoEntry{Text: "create a datastore for entries", Done: true},
-				&TodoEntry{Text: "add new entries"},
-				&TodoEntry{Text: "toggle edit off - click anywhere else"},
-				&TodoEntry{Text: "ToggleAll should do something", Done: true},
-				&TodoEntry{Text: "destroy -> delete from the list"},
-				&TodoEntry{Text: "add filters for state"},
-				&TodoEntry{Text: "update counters in footer"},
+				&TodoEntry{evChan: evChan, Text: "create a datastore for entries", Done: true},
+				&TodoEntry{evChan: evChan, Text: "add new entries", Done: true},
+				&TodoEntry{evChan: evChan, Text: "toggle edit off - click anywhere else"},
+				&TodoEntry{evChan: evChan, Text: "ToggleAll should do something", Done: true},
+				&TodoEntry{evChan: evChan, Text: "destroy -> delete from the list"},
+				&TodoEntry{evChan: evChan, Text: "add filters for state"},
+				&TodoEntry{evChan: evChan, Text: "update counters in footer"},
 			}
 
 			// update the t.State
