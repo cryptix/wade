@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json"
+
 	wd "github.com/phaikawl/wade"
-	"github.com/phaikawl/wade/services/http"
 	"github.com/phaikawl/wade/services/pdata"
 	"github.com/phaikawl/wade/testapp/ez/model"
 	"github.com/phaikawl/wade/utils"
+	"honnef.co/go/js/xhr"
 )
 
 type UserInfo struct {
@@ -94,25 +96,30 @@ func main() {
 		or being generated
 		*/
 		wade.Pager().RegisterController("pg-user-login", func(p *wd.PageCtrl) interface{} {
-			req := http.Service().NewRequest(http.MethodGet, "/auth")
+			req := xhr.NewRequest("GET", "/auth")
 			austat := &AuthedStat{false}
 			// performs the request to auth asynchronously
-			responseChannel := req.Do()
 
-			// use a goroutine to process the response
-			go func() {
-				u := new(model.User)
-				// here we wait for the response to come from the channel
-				// and decode it to u
-				response := <-responseChannel
-				response.DecodeDataTo(u)
+			err := req.Send(nil) //gopherjs:blocking
+			if err != nil {
+				panic(err)
+			}
 
-				pdata.Service().Set("authToken", u.Token)
+			u := new(model.User)
+			// here we wait for the response to come from the channel
+			// and decode it to u
 
-				// we set as.AuthGened to true here, the html elems that are bound
-				// to this field will update accordingly
-				austat.AuthGened = true
-			}()
+			err = json.Unmarshal([]byte(req.ResponseText), u)
+			if err != nil {
+				panic(err)
+			}
+
+			pdata.Service().Set("authToken", u.Token)
+
+			// we set as.AuthGened to true here, the html elems that are bound
+			// to this field will update accordingly
+			austat.AuthGened = true
+
 			return austat
 		})
 
@@ -153,16 +160,6 @@ func main() {
 		wade.Pager().RegisterController("pg-home", func(p *wd.PageCtrl) interface{} {
 			return new(HomeView)
 		})
-	})
-
-	// This part adds a function to be called to modify every http request
-	// It sets the AuthToken header to a token that will be verified by the server
-	http.Service().AddHttpInterceptor(func(req *http.Request) {
-		token, ok := pdata.Service().GetStr("authToken")
-		if !ok {
-			return
-		}
-		req.Headers.Set("AuthToken", token)
 	})
 
 	// Should must literally be called at the bottom of every Wade application

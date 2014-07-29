@@ -5,10 +5,11 @@ import (
 	"regexp"
 	"strings"
 
+	"honnef.co/go/js/xhr"
+
 	"github.com/gopherjs/gopherjs/js"
 	jq "github.com/gopherjs/jquery"
 	"github.com/phaikawl/wade/bind"
-	"github.com/phaikawl/wade/services/http"
 )
 
 var (
@@ -87,9 +88,14 @@ func (wd *Wade) Binding() *bind.Binding {
 func htmlImport(parent jq.JQuery, origin string) {
 	parent.Find("wimport").Each(func(i int, elem jq.JQuery) {
 		src := elem.Attr("src")
-		req := http.NewRequest(http.MethodGet, origin+src)
-		html := req.DoSync().Data()
-		ne := gJQ(parseTemplate(html))
+		req := xhr.NewRequest("GET", origin+src)
+
+		err := req.Send(nil) //gopherjs:blocking
+		if err != nil {
+			panic(err)
+		}
+
+		ne := gJQ(parseTemplate(req.ResponseText))
 		elem.ReplaceWith(ne)
 		htmlImport(ne, origin)
 	})
